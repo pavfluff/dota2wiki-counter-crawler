@@ -1,13 +1,13 @@
 # Import libraries for crawling
 import requests
 from bs4 import BeautifulSoup
-import numpy as np
 
 # Import PySpark
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType,StructField,StringType,IntegerType
 import pyspark.sql.functions as F
+from pyspark.sql import Window
 
 ## Creates spark session
 sc = SparkContext.getOrCreate()
@@ -112,6 +112,19 @@ for hero in heroes:
     # join 2 dfs
     df_conso = df_heroes.unionByName(df_items)
     df_conso = df_conso.withColumn('hero',F.lit(hero)).select('hero','segment','type','counter','srcline')
-
     df = df.unionByName(df_conso)
     print('Scraping done: '+hero)
+
+# Adding primary key id
+cols = ['id'] + df.columns
+df = df.withColumn("monotonically_increasing_id", F.monotonically_increasing_id())
+window = Window.orderBy(F.col('monotonically_increasing_id'))
+df = df.withColumn('id', F.row_number().over(window)).select(cols)
+
+# Renaming the cols according to the SQL server database names
+df = df.withColumnRenamed('id','heroID') \
+       .withColumnRenamed('hero','heroName') \
+       .withColumnRenamed('segment','heroSegment') \
+       .withColumnRenamed('type','heroType') \
+       .withColumnRenamed('counter','heroCounter') \
+       .withColumnRenamed('srcline','htmlCodeLine')
