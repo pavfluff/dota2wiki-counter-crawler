@@ -132,5 +132,6 @@ df = df.withColumnRenamed('id','heroID') \
 # Saving the data in local. Will use git push to update data in github
 df = df.withColumn('dateLoad',F.date_format(F.current_timestamp(), 'yyyy-MM-dd'))
 df.repartition(1).write.option("compression", "snappy")\
+                       .mode('overwrite')\
                        .partitionBy('dateload')\
                        .parquet('/home/maedora/Repositories/dota2wiki-counter-crawler/data/')
